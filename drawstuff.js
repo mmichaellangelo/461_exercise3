@@ -328,6 +328,9 @@ function interpRect(
   // modifies pass image data
   function shadePixel(imagedata, pixX, pixY, globals, attribs) {
     var difColor = new Color();
+    var ambColor = new Color();
+    var specColor = new Color();
+    var combinedColor = new Color();
     var worldLoc = new Vector(pixX, pixY, 0); // assume rect at z=0
     var lVect = new Vector();
 
@@ -337,12 +340,28 @@ function interpRect(
     lVect = Vector.normalize(lVect);
     var NdotL = Vector.dot(lVect, new Vector(0, 0, 1)); // rect in xy plane
 
+    // calc ambient color
+    if (globals.ambientCol instanceof Color) {
+      ambColor.r = (attribs.diffuse.r * globals.ambientCol.r) / 255;
+      ambColor.g = (attribs.diffuse.g * globals.ambientCol.g) / 255;
+      ambColor.b = (attribs.diffuse.b * globals.ambientCol.b) / 255;
+      combinedColor.add(ambColor);
+    }
+
     // calc diffuse color
     difColor.r = ((attribs.diffuse.r * globals.lightCol.r) / 255) * NdotL;
     difColor.g = ((attribs.diffuse.g * globals.lightCol.g) / 255) * NdotL;
     difColor.b = ((attribs.diffuse.b * globals.lightCol.b) / 255) * NdotL;
+    combinedColor.add(difColor);
 
-    drawPixel(imagedata, pixX, pixY, difColor);
+    // calc spec color
+    var specStrength = Math.max(0, NdotL);
+    specColor.r = globals.lightCol.r * Math.pow(specStrength, 8);
+    specColor.g = globals.lightCol.g * Math.pow(specStrength, 8);
+    specColor.b = globals.lightCol.b * Math.pow(specStrength, 8);
+    combinedColor.add(specColor);
+
+    drawPixel(imagedata, pixX, pixY, combinedColor);
   } // end shade pixel
 
   try {
@@ -438,6 +457,7 @@ function main() {
   var globals = {
     lightPos: new Vector(150, 100, 15), // light over left upper rect
     lightCol: new Color(255, 255, 255),
+    ambientCol: new Color(50, 50, 50),
   }; // light is white
   var tlAttribs = { diffuse: new Color(0, 0, 255) }; // all four rect verts blue
   var trAttribs = { diffuse: new Color(0, 0, 255) };
